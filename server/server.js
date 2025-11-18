@@ -108,6 +108,7 @@ const { apiAuth } = require("./auth");
 const { login } = require("./auth");
 const passwordHash = require("./password-hash");
 
+const { Metrics } = require("./metrics");
 const { Prometheus } = require("./prometheus");
 
 const hostname = config.hostname;
@@ -152,6 +153,7 @@ const { resetChrome } = require("./monitor-types/real-browser-monitor-type");
 const { EmbeddedMariaDB } = require("./embedded-mariadb");
 const { SetupDatabase } = require("./setup-database");
 const { chartSocketHandler } = require("./socket-handlers/chart-socket-handler");
+const { OpenTelemetry } = require("./opentelemetry");
 
 app.use(express.json());
 
@@ -194,8 +196,11 @@ let needSetup = false;
     server.entryPage = await Settings.get("entryPage");
     await StatusPage.loadDomainMappingList();
 
+    OpenTelemetry.init();
     log.debug("server", "Initializing Prometheus");
     await Prometheus.init();
+    log.debug("server", "Initializing Metrics");
+    await Metrics.init();
 
     log.debug("server", "Adding route");
 
@@ -1922,6 +1927,7 @@ async function shutdownFunction(signal) {
     stopBackgroundJobs();
     await cloudflaredStop();
     Settings.stopCacheCleaner();
+    await OpenTelemetry.shutdown();
 }
 
 /**

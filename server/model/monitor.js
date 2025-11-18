@@ -1,6 +1,8 @@
 const dayjs = require("dayjs");
 const axios = require("axios");
 const { Prometheus } = require("../prometheus");
+const { Metrics } = require("../metrics");
+const { Metrics } = require("../metrics");
 const { log, UP, DOWN, PENDING, MAINTENANCE, flipStatus, MAX_INTERVAL_SECOND, MIN_INTERVAL_SECOND,
     SQL_DATETIME_FORMAT, evaluateJsonQuery,
     PING_PACKET_SIZE_MIN, PING_PACKET_SIZE_MAX, PING_PACKET_SIZE_DEFAULT,
@@ -350,6 +352,7 @@ class Monitor extends BeanModel {
         let retries = 0;
 
         this.prometheus = new Prometheus(this, await this.getTags());
+        this.metrics = new Metrics(this, await this.getTags());
 
         const beat = async () => {
 
@@ -984,6 +987,7 @@ class Monitor extends BeanModel {
 
             log.debug("monitor", `[${this.name}] prometheus.update`);
             this.prometheus?.update(bean, tlsInfo);
+            this.metrics?.update(bean, tlsInfo);
 
             previousBeat = bean;
 
@@ -1099,14 +1103,20 @@ class Monitor extends BeanModel {
         this.isStop = true;
 
         this.prometheus?.remove();
+        this.metrics?.remove();
     }
 
     /**
      * Get prometheus instance
      * @returns {Prometheus|undefined} Current prometheus instance
+     * Get metrics instance
+     * @returns {Metrics|undefined} Current metrics instance
      */
     getPrometheus() {
         return this.prometheus;
+    }
+    getMetrics() {
+        return this.metrics;
     }
 
     /**
@@ -1809,6 +1819,7 @@ class Monitor extends BeanModel {
     async handleTlsInfo(tlsInfo) {
         await this.updateTlsInfo(tlsInfo);
         this.prometheus?.update(null, tlsInfo);
+        this.metrics?.update(null, tlsInfo);
 
         if (!this.getIgnoreTls() && this.isEnabledExpiryNotification()) {
             log.debug("monitor", `[${this.name}] call checkCertExpiryNotifications`);
